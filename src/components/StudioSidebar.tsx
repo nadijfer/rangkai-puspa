@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Flower2, Gift, Mail, Plus, Wand2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Flower2, Gift, GripVertical, Mail, Plus, Wand2 } from 'lucide-react';
 import {
   FLOWER_SPECIES,
   PETAL_MOTIFS,
@@ -18,9 +18,19 @@ import {
   PlacedFlower,
   WrapperConfig,
 } from '../types/bouquet';
+import { FlowerInspector } from './FlowerInspector';
 import { PixelColorPicker, PixelFlowerIcon, WrapperMotifPreview } from './PixelSwatchPicker';
 
 type TabId = 'flowers' | 'wrapper' | 'card';
+
+export interface PaletteDragPayload {
+  species: FlowerSpeciesId;
+  color: string;
+  secondaryColor: string;
+  motif: PetalMotif;
+  clientX: number;
+  clientY: number;
+}
 
 interface StudioSidebarProps {
   lang: Language;
@@ -28,6 +38,7 @@ interface StudioSidebarProps {
   wrapper: WrapperConfig;
   card: GiftCardConfig;
   selectedFlower: PlacedFlower | null;
+  isPaletteDragging: boolean;
   onChangeName: (name: string) => void;
   onAddFlower: (spec: {
     species: FlowerSpeciesId;
@@ -35,10 +46,13 @@ interface StudioSidebarProps {
     secondaryColor: string;
     motif: PetalMotif;
   }) => void;
+  onStartPaletteDrag: (payload: PaletteDragPayload) => void;
   onUpdateSelectedFlower: (patch: Partial<PlacedFlower>, commit: boolean) => void;
+  onDuplicateSelected: () => void;
+  onRemoveSelected: () => void;
+  onCloseInspector: () => void;
   onChangeWrapper: (patch: Partial<WrapperConfig>) => void;
   onChangeCard: (patch: Partial<GiftCardConfig>) => void;
-  onClearFlowers: () => void;
 }
 
 export function StudioSidebar({
@@ -47,16 +61,23 @@ export function StudioSidebar({
   wrapper,
   card,
   selectedFlower,
+  isPaletteDragging,
   onChangeName,
   onAddFlower,
+  onStartPaletteDrag,
   onUpdateSelectedFlower,
+  onDuplicateSelected,
+  onRemoveSelected,
+  onCloseInspector,
   onChangeWrapper,
   onChangeCard,
-  onClearFlowers,
 }: StudioSidebarProps) {
   const t = TRANSLATIONS[lang];
   const [activeTab, setActiveTab] = useState<TabId>('flowers');
   const [catFilter, setCatFilter] = useState<'all' | FlowerCategory>('all');
+  const scrollBodyRef = useRef<HTMLDivElement>(null);
+  const lastSelectedIdRef = useRef<string | null>(null);
+  const suppressNextClickRef = useRef(false);
 
   // Brush settings for adding new flowers
   const [draftSpecies, setDraftSpecies] = useState<FlowerSpeciesId>('rose');
@@ -64,12 +85,95 @@ export function StudioSidebar({
   const [draftSecondary, setDraftSecondary] = useState('#ffd6e0');
   const [draftMotif, setDraftMotif] = useState<PetalMotif>('ombre');
 
+  // Auto-open Flowers tab & scroll to adjustment controls when a 3D flower is selected
+  useEffect(() => {
+    const nextId = selectedFlower?.id ?? null;
+    if (nextId && nextId !== lastSelectedIdRef.current && !isPaletteDragging) {
+      setActiveTab('flowers');
+      requestAnimationFrame(() => {
+        scrollBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+    lastSelectedIdRef.current = nextId;
+  }, [selectedFlower?.id, isPaletteDragging]);
+
   const handlePickSpecies = (id: FlowerSpeciesId) => {
     const spec = SPECIES_BY_ID[id];
     setDraftSpecies(id);
     setDraftColor(spec.defaultColor);
     setDraftSecondary(spec.defaultSecondary);
     setDraftMotif(spec.defaultMotif);
+  };
+
+  const handleSpeciesPointerDown = (
+    e: React.PointerEvent<HTMLButtonElement>,
+    spec: (typeof FLOWER_SPECIES)[number],
+  ) => {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const isTouch = e.pointerType !== 'mouse';
+
+    const useColor = draftSpecies === spec.id ? draftColor : spec.defaultColor;
+    const useSecondary = draftSpecies === spec.id ? draftSecondary : spec.defaultSecondary;
+    const useMotif = draftSpecies === spec.id ? draftMotif : spec.defaultMotif;
+
+    let timerId: number | null = null;
+    let triggered = false;
+
+    const cleanup = () => {
+      if (timerId !== null) {
+        window.clearTimeout(timerId);
+        timerId = null;
+      }
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+    };
+
+    const startDrag = (cx: number, cy: number) => {
+      if (triggered) return;
+      triggered = true;
+      suppressNextClickRef.current = true;
+      if (draftSpecies !== spec.id) {
+        handlePickSpecies(spec.id);
+      }
+      cleanup();
+      onStartPaletteDrag({
+        species: spec.id,
+        color: useColor,
+        secondaryColor: useSecondary,
+        motif: useMotif,
+        clientX: cx,
+        clientY: cy,
+      });
+    };
+
+    const onMove = (mv: PointerEvent) => {
+      const dist = Math.hypot(mv.clientX - startX, mv.clientY - startY);
+      if (isTouch) {
+        if (dist > 10) {
+          // User is scrolling the tray; cancel hold-to-drag
+          cleanup();
+        }
+      } else if (dist > 6) {
+        startDrag(mv.clientX, mv.clientY);
+      }
+    };
+
+    const onEnd = () => {
+      cleanup();
+    };
+
+    if (isTouch) {
+      timerId = window.setTimeout(() => {
+        startDrag(startX, startY);
+      }, 160);
+    }
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
   };
 
   // When a flower is selected, color/motif controls can edit it directly OR user can add new
@@ -126,20 +230,32 @@ export function StudioSidebar({
       </div>
 
       {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto pixel-scroll p-3.5 space-y-4">
+      <div
+        ref={scrollBodyRef}
+        className={`flex-1 ${isPaletteDragging ? 'overflow-hidden' : 'overflow-y-auto'} pixel-scroll p-3.5 space-y-4`}
+      >
         {activeTab === 'flowers' && (
           <>
+            {/* Selected Flower Adjustment Panel (placed in tray so 3D bouquet stays unobstructed) */}
+            {selectedFlower && (
+              <FlowerInspector
+                flower={selectedFlower}
+                lang={lang}
+                onUpdate={onUpdateSelectedFlower}
+                onDuplicate={onDuplicateSelected}
+                onRemove={onRemoveSelected}
+                onClose={onCloseInspector}
+              />
+            )}
+
             {/* Category filter */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold">{t.labels.species}</span>
-                <button
-                  type="button"
-                  onClick={onClearFlowers}
-                  className="text-[11px] text-[#9b3d52] underline cursor-pointer"
-                >
-                  {t.actions.clearAll}
-                </button>
+                <span className="text-[10px] text-[#70605a] flex items-center gap-0.5">
+                  <GripVertical className="w-3 h-3" />
+                  {t.labels.dragPaletteHint}
+                </span>
               </div>
               <div className="flex gap-1">
                 {(
@@ -174,7 +290,14 @@ export function StudioSidebar({
                   <button
                     key={spec.id}
                     type="button"
-                    onClick={() => handlePickSpecies(spec.id)}
+                    onPointerDown={(e) => handleSpeciesPointerDown(e, spec)}
+                    onClick={() => {
+                      if (suppressNextClickRef.current) {
+                        suppressNextClickRef.current = false;
+                        return;
+                      }
+                      handlePickSpecies(spec.id);
+                    }}
                     onDoubleClick={() =>
                       onAddFlower({
                         species: spec.id,
@@ -183,7 +306,7 @@ export function StudioSidebar({
                         motif: spec.defaultMotif,
                       })
                     }
-                    className={`p-2 border-2 border-[#4b3b36] flex flex-col items-center gap-1 text-center cursor-pointer transition-all ${
+                    className={`p-2 border-2 border-[#4b3b36] flex flex-col items-center gap-1 text-center cursor-grab active:cursor-grabbing transition-all select-none ${
                       active
                         ? 'bg-[#fde9ee] ring-2 ring-[#d95d79] -translate-y-0.5'
                         : 'bg-[#fffdf8] hover:bg-[#f6efe2]'

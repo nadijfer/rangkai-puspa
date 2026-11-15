@@ -4,6 +4,7 @@ import {
   RotateCcw,
   Share2,
   Sparkles,
+  Trash2,
   Undo2,
   Redo2,
   Volume2,
@@ -25,6 +26,7 @@ interface TopBarProps {
   onUndo: () => void;
   onRedo: () => void;
   onAutoArrange: () => void;
+  onClearFlowers: () => void;
   onResetCamera: () => void;
   onSaveGallery: () => void;
   onOpenGallery: () => void;
@@ -44,6 +46,7 @@ export function TopBar({
   onUndo,
   onRedo,
   onAutoArrange,
+  onClearFlowers,
   onResetCamera,
   onSaveGallery,
   onOpenGallery,
@@ -109,6 +112,16 @@ export function TopBar({
           className="pixel-btn px-2 py-1.5 text-xs flex items-center gap-1"
         >
           <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={onClearFlowers}
+          disabled={stemCount === 0}
+          title={t.actions.clearAll}
+          className="pixel-btn px-2 py-1.5 text-xs font-semibold text-[#b9324e] flex items-center gap-1 whitespace-nowrap"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span className="hidden md:inline">{t.actions.clearAll}</span>
         </button>
 
         {/* Pixel Density Cycle */}

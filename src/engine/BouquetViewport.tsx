@@ -13,6 +13,7 @@ import { buildFlowerObject, buildWrapperObject } from './voxelModels';
 export interface BouquetViewportHandle {
   resetCamera: () => void;
   capturePng: (options?: { transparent?: boolean; width?: number; height?: number }) => string;
+  projectClientPointToBouquet: (clientX: number, clientY: number) => [number, number, number] | null;
 }
 
 interface BouquetViewportProps {
@@ -125,6 +126,36 @@ export const BouquetViewport = forwardRef<BouquetViewportHandle, BouquetViewport
           eng.renderNow();
         }
         return exportCanvas.toDataURL('image/png');
+      },
+      projectClientPointToBouquet: (clientX: number, clientY: number) => {
+        const eng = engineRef.current;
+        if (!eng) return null;
+        const rect = eng.renderer.domElement.getBoundingClientRect();
+        if (
+          clientX < rect.left ||
+          clientX > rect.right ||
+          clientY < rect.top ||
+          clientY > rect.bottom
+        ) {
+          return null;
+        }
+        const ndc = new THREE.Vector2(
+          ((clientX - rect.left) / rect.width) * 2 - 1,
+          -((clientY - rect.top) / rect.height) * 2 + 1,
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(ndc, eng.camera);
+        const camNormal = new THREE.Vector3();
+        eng.camera.getWorldDirection(camNormal).negate();
+        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+          camNormal,
+          new THREE.Vector3(0, 1.25, 0),
+        );
+        const hit = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(plane, hit)) {
+          return clampToBouquetDome([hit.x, hit.y, hit.z]);
+        }
+        return null;
       },
     }));
 

@@ -65,6 +65,8 @@ export const TRANSLATIONS: Record<
       scale: string;
       stemCount: string;
       dragHint: string;
+      dragPaletteHint: string;
+      dropOnBouquet: string;
       giftBadge: string;
       starterPresets: string;
       savedBouquets: string;
@@ -138,6 +140,8 @@ export const TRANSLATIONS: Record<
       scale: 'Ukuran',
       stemCount: 'tangkai',
       dragHint: 'Klik & seret bunga untuk geser 3D • Seret latar untuk putar kamera',
+      dragPaletteHint: 'Tahan & seret bunga ke buket, atau klik Tambah',
+      dropOnBouquet: 'Lepas di buket!',
       giftBadge: 'Kiriman Buket Spesial',
       starterPresets: 'Contoh Rangkaian',
       savedBouquets: 'Tersimpan di Browser',
@@ -210,6 +214,8 @@ export const TRANSLATIONS: Record<
       scale: 'Scale',
       stemCount: 'stems',
       dragHint: 'Drag any flower in 3D • Drag background to orbit camera',
+      dragPaletteHint: 'Hold & drag a flower onto the bouquet, or tap Add',
+      dropOnBouquet: 'Drop on bouquet!',
       giftBadge: 'A Pixel Bouquet For You',
       starterPresets: 'Starter Bouquets',
       savedBouquets: 'Saved in Browser',

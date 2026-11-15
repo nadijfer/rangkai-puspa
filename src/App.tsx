@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlowerInspector } from './components/FlowerInspector';
 import { GalleryModal } from './components/GalleryModal';
 import { GiftViewOverlay } from './components/GiftViewOverlay';
+import { PixelFlowerIcon } from './components/PixelSwatchPicker';
 import { ShareExportModal } from './components/ShareExportModal';
-import { StudioSidebar } from './components/StudioSidebar';
+import { PaletteDragPayload, StudioSidebar } from './components/StudioSidebar';
 import { TopBar } from './components/TopBar';
 import { SPECIES_BY_ID, STARTER_PRESETS } from './data/catalog';
 import { BouquetViewport, BouquetViewportHandle } from './engine/BouquetViewport';
@@ -55,6 +55,13 @@ export function App() {
   const [showShare, setShowShare] = useState(false);
   const [savedEntries, setSavedEntries] = useState<SavedBouquetEntry[]>(() => listSavedBouquets());
   const [toast, setToast] = useState<string | null>(null);
+
+  type ActivePaletteDrag = PaletteDragPayload & {
+    previewFlowerId: string | null;
+    overBouquet: boolean;
+  };
+  const [paletteDrag, setPaletteDrag] = useState<ActivePaletteDrag | null>(null);
+  const paletteDragRef = useRef<ActivePaletteDrag | null>(null);
 
   const viewportRef = useRef<BouquetViewportHandle>(null);
   const dragSnapshotRef = useRef<BouquetState | null>(null);
@@ -128,6 +135,18 @@ export function App() {
     if (historyIdx > 0) {
       setHistoryIdx((i) => i - 1);
       soundFx.playSnip();
+    }
+  }, [historyIdx]);
+
+  const cancelPreview = useCallback(() => {
+    const baseline = dragSnapshotRef.current;
+    dragSnapshotRef.current = null;
+    if (baseline) {
+      setHistory((prevHist) => {
+        const copy = [...prevHist];
+        copy[historyIdx] = baseline;
+        return copy;
+      });
     }
   }, [historyIdx]);
 
@@ -298,6 +317,109 @@ export function App() {
     soundFx.playChime();
   };
 
+  const handleStartPaletteDrag = useCallback((payload: PaletteDragPayload) => {
+    soundFx.playPop(3);
+    const active: ActivePaletteDrag = {
+      ...payload,
+      previewFlowerId: null,
+      overBouquet: false,
+    };
+    paletteDragRef.current = active;
+    setPaletteDrag(active);
+  }, []);
+
+  const isPaletteDragging = paletteDrag !== null;
+
+  useEffect(() => {
+    if (!isPaletteDragging) return;
+
+    const preventTouchScroll = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    const onMove = (e: PointerEvent) => {
+      const cur = paletteDragRef.current;
+      if (!cur) return;
+      const pos = viewportRef.current?.projectClientPointToBouquet(e.clientX, e.clientY) ?? null;
+
+      if (pos) {
+        cur.overBouquet = true;
+        if (!cur.previewFlowerId) {
+          const newId = `fl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+          cur.previewFlowerId = newId;
+          const previewFlower: PlacedFlower = {
+            id: newId,
+            species: cur.species,
+            color: cur.color,
+            secondaryColor: cur.secondaryColor,
+            motif: cur.motif,
+            position: pos,
+            scale: 1,
+            spin: 0,
+            tilt: 0,
+          };
+          previewState((prev) => ({
+            ...prev,
+            flowers: [...prev.flowers, previewFlower],
+          }));
+          setSelectedFlowerId(newId);
+        } else {
+          const targetId = cur.previewFlowerId;
+          previewState((prev) => ({
+            ...prev,
+            flowers: prev.flowers.map((f) => (f.id === targetId ? { ...f, position: pos } : f)),
+          }));
+        }
+      } else {
+        cur.overBouquet = false;
+        if (cur.previewFlowerId) {
+          const removeId = cur.previewFlowerId;
+          cur.previewFlowerId = null;
+          previewState((prev) => ({
+            ...prev,
+            flowers: prev.flowers.filter((f) => f.id !== removeId),
+          }));
+          setSelectedFlowerId(null);
+        }
+      }
+
+      cur.clientX = e.clientX;
+      cur.clientY = e.clientY;
+      setPaletteDrag({ ...cur });
+    };
+
+    const onEnd = (e: PointerEvent) => {
+      const cur = paletteDragRef.current;
+      if (!cur) return;
+      const pos = viewportRef.current?.projectClientPointToBouquet(e.clientX, e.clientY) ?? null;
+      if (pos && cur.previewFlowerId) {
+        const targetId = cur.previewFlowerId;
+        finalizePreviewCommit((prev) => ({
+          ...prev,
+          flowers: prev.flowers.map((f) => (f.id === targetId ? { ...f, position: pos } : f)),
+        }));
+        soundFx.playPop(0);
+      } else {
+        cancelPreview();
+        setSelectedFlowerId(null);
+      }
+      paletteDragRef.current = null;
+      setPaletteDrag(null);
+    };
+
+    window.addEventListener('touchmove', preventTouchScroll, { passive: false });
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+
+    return () => {
+      window.removeEventListener('touchmove', preventTouchScroll);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+    };
+  }, [isPaletteDragging, previewState, finalizePreviewCommit, cancelPreview]);
+
   const selectedFlower = bouquet.flowers.find((f) => f.id === selectedFlowerId) ?? null;
 
   return (
@@ -320,6 +442,11 @@ export function App() {
           onUndo={handleUndo}
           onRedo={handleRedo}
           onAutoArrange={handleAutoArrange}
+          onClearFlowers={() => {
+            soundFx.playSnip();
+            commitState((prev) => ({ ...prev, flowers: [] }));
+            setSelectedFlowerId(null);
+          }}
           onResetCamera={() => viewportRef.current?.resetCamera()}
           onSaveGallery={handleSaveGallery}
           onOpenGallery={() => {
@@ -339,18 +466,18 @@ export function App() {
             wrapper={bouquet.wrapper}
             card={bouquet.card}
             selectedFlower={selectedFlower}
+            isPaletteDragging={isPaletteDragging}
             onChangeName={(name) => commitState((prev) => ({ ...prev, name }))}
             onAddFlower={handleAddFlower}
+            onStartPaletteDrag={handleStartPaletteDrag}
             onUpdateSelectedFlower={(patch, commit) => {
               if (selectedFlowerId) handleUpdateFlower(selectedFlowerId, patch, commit);
             }}
+            onDuplicateSelected={handleDuplicateSelected}
+            onRemoveSelected={handleRemoveSelected}
+            onCloseInspector={() => setSelectedFlowerId(null)}
             onChangeWrapper={handleChangeWrapper}
             onChangeCard={handleChangeCard}
-            onClearFlowers={() => {
-              soundFx.playSnip();
-              commitState((prev) => ({ ...prev, flowers: [] }));
-              setSelectedFlowerId(null);
-            }}
           />
         )}
 
@@ -375,24 +502,28 @@ export function App() {
               </div>
             </div>
           )}
-
-          {/* Selected Flower Inspector */}
-          {!giftMode && selectedFlower && (
-            <div className="absolute top-3 right-3">
-              <FlowerInspector
-                flower={selectedFlower}
-                lang={lang}
-                onUpdate={(patch, commit) =>
-                  handleUpdateFlower(selectedFlower.id, patch, commit)
-                }
-                onDuplicate={handleDuplicateSelected}
-                onRemove={handleRemoveSelected}
-                onClose={() => setSelectedFlowerId(null)}
-              />
-            </div>
-          )}
         </main>
       </div>
+
+      {/* Floating Ghost while dragging a flower from palette */}
+      {paletteDrag && !paletteDrag.overBouquet && (
+        <div
+          className="fixed z-50 pointer-events-none -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1"
+          style={{ left: paletteDrag.clientX, top: paletteDrag.clientY }}
+        >
+          <div className="pixel-panel px-2.5 py-2 flex items-center gap-2 bg-[#fffdf8]/95 scale-110">
+            <PixelFlowerIcon
+              species={paletteDrag.species}
+              colors={[
+                paletteDrag.color,
+                paletteDrag.secondaryColor,
+                SPECIES_BY_ID[paletteDrag.species].stemColor,
+              ]}
+            />
+            <span className="text-xs font-bold">{t.labels.dropOnBouquet}</span>
+          </div>
+        </div>
+      )}
 
       {/* Gift Mode Presentation Overlay */}
       {giftMode && (
