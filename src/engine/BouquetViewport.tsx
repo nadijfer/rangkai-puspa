@@ -78,6 +78,7 @@ export const BouquetViewport = forwardRef<BouquetViewportHandle, BouquetViewport
       postScene: THREE.Scene;
       postCamera: THREE.OrthographicCamera;
       postQuadMat: THREE.MeshBasicMaterial;
+      coasterMat: THREE.MeshStandardMaterial;
       bouquetRoot: THREE.Group;
       flowersGroup: THREE.Group;
       wrapperGroup: THREE.Group;
@@ -122,7 +123,7 @@ export const BouquetViewport = forwardRef<BouquetViewportHandle, BouquetViewport
 
         if (transparent) {
           eng.scene.background = prevBg;
-          eng.renderer.setClearColor(STUDIO_BG_HEX, prevClearAlpha);
+          eng.renderer.setClearColor(new THREE.Color(propsRef.current.bouquet.bgColor || '#f4ecdc'), prevClearAlpha);
           eng.renderNow();
         }
         return exportCanvas.toDataURL('image/png');
@@ -285,6 +286,7 @@ export const BouquetViewport = forwardRef<BouquetViewportHandle, BouquetViewport
         postScene,
         postCamera,
         postQuadMat,
+        coasterMat,
         bouquetRoot,
         flowersGroup,
         wrapperGroup,
@@ -479,6 +481,16 @@ export const BouquetViewport = forwardRef<BouquetViewportHandle, BouquetViewport
       const targetW = Math.max(64, Math.round((w / Math.max(1, h)) * targetH));
       eng.renderTarget.setSize(targetW, targetH);
     }, [pixelDensity]);
+
+    // Sync background color & harmonized coaster tint
+    useEffect(() => {
+      const eng = engineRef.current;
+      if (!eng) return;
+      const bg = new THREE.Color(bouquet.bgColor || '#f4ecdc');
+      eng.scene.background = bg;
+      eng.renderer.setClearColor(bg, 1);
+      eng.coasterMat.color.copy(bg).lerp(new THREE.Color('#cfc2aa'), 0.55);
+    }, [bouquet.bgColor]);
 
     // Sync Wrapper 3D geometry
     useEffect(() => {

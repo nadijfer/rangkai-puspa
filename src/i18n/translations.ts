@@ -50,6 +50,7 @@ export const TRANSLATIONS: Record<
       ribbonStyle: string;
       ribbonColor: string;
       tagText: string;
+      bgColor: string;
       bouquetName: string;
       cardTo: string;
       cardFrom: string;
@@ -125,6 +126,7 @@ export const TRANSLATIONS: Record<
       ribbonStyle: 'Model Pita',
       ribbonColor: 'Warna Pita',
       tagText: 'Teks Tag Gantung',
+      bgColor: 'Warna Latar Belakang',
       bouquetName: 'Nama Rangkaian',
       cardTo: 'Untuk',
       cardFrom: 'Dari',
@@ -199,6 +201,7 @@ export const TRANSLATIONS: Record<
       ribbonStyle: 'Ribbon Style',
       ribbonColor: 'Ribbon Color',
       tagText: 'Hanging Tag Text',
+      bgColor: 'Background Color',
       bouquetName: 'Bouquet Name',
       cardTo: 'To',
       cardFrom: 'From',

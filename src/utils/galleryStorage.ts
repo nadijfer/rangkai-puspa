@@ -1,3 +1,4 @@
+import { DEFAULT_BG_COLOR } from '../data/catalog';
 import { BouquetState, SavedBouquetEntry } from '../types/bouquet';
 
 const STORAGE_KEY = 'rangkai-puspa:gallery:v1';
@@ -8,14 +9,22 @@ export function listSavedBouquets(): SavedBouquetEntry[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is SavedBouquetEntry =>
-        typeof entry === 'object' &&
-        entry !== null &&
-        typeof entry.id === 'string' &&
-        typeof entry.savedAt === 'number' &&
-        typeof entry.state === 'object',
-    );
+    return parsed
+      .filter(
+        (entry): entry is SavedBouquetEntry =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          typeof entry.id === 'string' &&
+          typeof entry.savedAt === 'number' &&
+          typeof entry.state === 'object',
+      )
+      .map((entry) => ({
+        ...entry,
+        state: {
+          ...entry.state,
+          bgColor: entry.state.bgColor || DEFAULT_BG_COLOR,
+        },
+      }));
   } catch {
     return [];
   }

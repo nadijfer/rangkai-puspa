@@ -56,9 +56,9 @@ export function ShareExportModal({
   const handleDownloadPostcard = async () => {
     setBusy(true);
     try {
-      const snap = onCapturePng(false);
+      const snap = onCapturePng(true);
       if (!snap) return;
-      const postcard = await buildPostcardDataUrl(snap, bouquet.name, bouquet.card);
+      const postcard = await buildPostcardDataUrl(snap, bouquet.name, bouquet.card, bouquet.bgColor);
       const slug = (bouquet.name || 'bouquet').toLowerCase().replace(/[^a-z0-9]+/g, '-');
       triggerDownloadDataUrl(postcard, `${slug}-postcard.png`);
     } finally {

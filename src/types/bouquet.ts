@@ -71,6 +71,7 @@ export interface GiftCardConfig {
 
 export interface BouquetState {
   name: string;
+  bgColor: string;
   flowers: PlacedFlower[];
   wrapper: WrapperConfig;
   card: GiftCardConfig;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Flower2, Gift, GripVertical, Mail, Plus, Wand2 } from 'lucide-react';
 import {
+  BG_SWATCHES,
   FLOWER_SPECIES,
   PETAL_MOTIFS,
   RIBBON_STYLES,
@@ -35,11 +36,13 @@ export interface PaletteDragPayload {
 interface StudioSidebarProps {
   lang: Language;
   bouquetName: string;
+  bgColor: string;
   wrapper: WrapperConfig;
   card: GiftCardConfig;
   selectedFlower: PlacedFlower | null;
   isPaletteDragging: boolean;
   onChangeName: (name: string) => void;
+  onChangeBgColor: (hex: string) => void;
   onAddFlower: (spec: {
     species: FlowerSpeciesId;
     color: string;
@@ -58,11 +61,13 @@ interface StudioSidebarProps {
 export function StudioSidebar({
   lang,
   bouquetName,
+  bgColor,
   wrapper,
   card,
   selectedFlower,
   isPaletteDragging,
   onChangeName,
+  onChangeBgColor,
   onAddFlower,
   onStartPaletteDrag,
   onUpdateSelectedFlower,
@@ -85,14 +90,11 @@ export function StudioSidebar({
   const [draftSecondary, setDraftSecondary] = useState('#ffd6e0');
   const [draftMotif, setDraftMotif] = useState<PetalMotif>('ombre');
 
-  // Auto-open Flowers tab & scroll to adjustment controls when a 3D flower is selected
+  // Auto-open Flowers tab when a 3D flower is selected without forcing scroll position
   useEffect(() => {
     const nextId = selectedFlower?.id ?? null;
     if (nextId && nextId !== lastSelectedIdRef.current && !isPaletteDragging) {
       setActiveTab('flowers');
-      requestAnimationFrame(() => {
-        scrollBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      });
     }
     lastSelectedIdRef.current = nextId;
   }, [selectedFlower?.id, isPaletteDragging]);
@@ -501,6 +503,42 @@ export function StudioSidebar({
                   className="pixel-input w-full text-xs"
                 />
               </label>
+            </div>
+
+            {/* Solid Studio Background Color */}
+            <div className="p-3 bg-[#f6efe2] border-2 border-[#4b3b36] space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span>{t.labels.bgColor}</span>
+                <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-normal text-[#70605a] hover:text-[#352b29]">
+                  <span className="font-pixel-mono text-sm uppercase">{bgColor}</span>
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => onChangeBgColor(e.target.value)}
+                    className="w-5 h-5 p-0 border-2 border-[#4b3b36] cursor-pointer bg-transparent"
+                    aria-label={t.labels.bgColor}
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-8 gap-1.5">
+                {BG_SWATCHES.map((swatch) => {
+                  const active = bgColor.toLowerCase() === swatch.hex.toLowerCase();
+                  return (
+                    <button
+                      key={swatch.id}
+                      type="button"
+                      title={swatch.name[lang]}
+                      onClick={() => onChangeBgColor(swatch.hex)}
+                      className={`h-6 border-2 transition-transform cursor-pointer ${
+                        active
+                          ? 'border-[#352b29] scale-110 ring-2 ring-[#d95d79]'
+                          : 'border-[#4b3b36]/70 hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: swatch.hex }}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </>
         )}

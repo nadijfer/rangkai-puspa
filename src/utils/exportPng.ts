@@ -17,6 +17,7 @@ export async function buildPostcardDataUrl(
   bouquetDataUrl: string,
   bouquetName: string,
   card: GiftCardConfig,
+  bgColor = '#f4ecdc',
 ): Promise<string> {
   const img = await loadImage(bouquetDataUrl);
 
@@ -45,12 +46,12 @@ export async function buildPostcardDataUrl(
   ctx.lineWidth = 8;
   ctx.strokeRect(24, 24, width - 48, height - 48);
 
-  // Inner bouquet window
+  // Inner bouquet window (uses bouquet's own background color so it blends seamlessly)
   const frameX = 64;
   const frameY = 64;
   const frameW = width - 128;
   const frameH = 660;
-  ctx.fillStyle = '#ede4d3';
+  ctx.fillStyle = bgColor;
   ctx.fillRect(frameX, frameY, frameW, frameH);
   ctx.strokeStyle = '#4b3b36';
   ctx.lineWidth = 6;

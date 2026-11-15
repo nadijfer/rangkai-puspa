@@ -29,7 +29,7 @@ import { decodeBouquetFromHash } from './utils/shareCodec';
 import { soundFx } from './utils/soundFx';
 
 function getInitialSetup(): { initialBouquet: BouquetState; isGift: boolean } {
-  if (typeof window !== 'undefined' && window.location.hash.includes('b=')) {
+  if (typeof window !== 'undefined' && window.location.hash) {
     const decoded = decodeBouquetFromHash(window.location.hash);
     if (decoded) {
       return { initialBouquet: decoded, isGift: true };
@@ -117,7 +117,7 @@ export function App() {
   // Hash navigation listener
   useEffect(() => {
     const onHashChange = () => {
-      if (window.location.hash.includes('b=')) {
+      if (window.location.hash) {
         const decoded = decodeBouquetFromHash(window.location.hash);
         if (decoded) {
           setHistory([decoded]);
@@ -463,11 +463,13 @@ export function App() {
           <StudioSidebar
             lang={lang}
             bouquetName={bouquet.name}
+            bgColor={bouquet.bgColor}
             wrapper={bouquet.wrapper}
             card={bouquet.card}
             selectedFlower={selectedFlower}
             isPaletteDragging={isPaletteDragging}
             onChangeName={(name) => commitState((prev) => ({ ...prev, name }))}
+            onChangeBgColor={(bgColor) => commitState((prev) => ({ ...prev, bgColor }))}
             onAddFlower={handleAddFlower}
             onStartPaletteDrag={handleStartPaletteDrag}
             onUpdateSelectedFlower={(patch, commit) => {

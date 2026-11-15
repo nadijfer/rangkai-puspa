@@ -213,9 +213,23 @@ export const RIBBON_STYLES: { id: RibbonStyle; name: { id: string; en: string } 
   { id: 'twine', name: { id: 'Tali Rami', en: 'Rustic Twine' } },
 ];
 
+export const DEFAULT_BG_COLOR = '#f4ecdc';
+
+export const BG_SWATCHES: ColorSwatch[] = [
+  { id: 'bg-cream', hex: '#f4ecdc', name: { id: 'Krem Hangat', en: 'Warm Cream' } },
+  { id: 'bg-sage', hex: '#dce6d8', name: { id: 'Sage Lembut', en: 'Sage Mist' } },
+  { id: 'bg-blush', hex: '#f7e3e8', name: { id: 'Merah Jambu', en: 'Blush Cloud' } },
+  { id: 'bg-sky', hex: '#dfe9f5', name: { id: 'Biru Langit', en: 'Sky Pastel' } },
+  { id: 'bg-lavender', hex: '#eae2f8', name: { id: 'Lavender', en: 'Lavender Haze' } },
+  { id: 'bg-butter', hex: '#f9efd2', name: { id: 'Mentega', en: 'Buttercream' } },
+  { id: 'bg-cocoa', hex: '#4a3b39', name: { id: 'Coklat Gelap', en: 'Warm Cocoa' } },
+  { id: 'bg-midnight', hex: '#232d4b', name: { id: 'Biru Malam', en: 'Midnight' } },
+];
+
 export const STARTER_PRESETS: BouquetState[] = [
   {
     name: 'Pastel Morning',
+    bgColor: '#f4ecdc',
     flowers: [
       {
         id: 'p1-1',
@@ -324,6 +338,7 @@ export const STARTER_PRESETS: BouquetState[] = [
   },
   {
     name: 'Sunny Meadow',
+    bgColor: '#dce6d8',
     flowers: [
       {
         id: 'p2-1',
@@ -432,6 +447,7 @@ export const STARTER_PRESETS: BouquetState[] = [
   },
   {
     name: 'Midnight Starlight',
+    bgColor: '#232d4b',
     flowers: [
       {
         id: 'p3-1',
